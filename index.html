@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="uz"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Shaxmat Pro</title><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#2f7d4f"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<style>
+:root{--bg:#f6f4ef;--c:#fff;--t:#1d1d1b;--m:#6b6b66;--a:#2f7d4f;--l:#ecd9b5;--d:#b58863}
+@media(prefers-color-scheme:dark){:root{--bg:#161715;--c:#222320;--t:#f0eee8;--m:#a3a29b;--a:#58b87a;--l:#c9b48c;--d:#8a6a4c}}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:15px/1.5 system-ui,sans-serif}
+.w{max-width:520px;margin:0 auto;padding:10px}h1{font-size:20px;margin:4px 0 8px}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px}.wrap{flex-wrap:wrap}
+.tab{flex:none;border:1px solid var(--m);background:var(--c);color:var(--t);border-radius:18px;padding:6px 12px;font-size:13px;cursor:pointer}
+.tab.on{background:var(--a);color:#fff;border-color:var(--a)}.tab.dn::after{content:" ✓"}.lv{font-weight:700;margin:10px 2px 2px}
+#bd{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));grid-template-rows:repeat(8,minmax(0,1fr));aspect-ratio:1;border-radius:8px;overflow:hidden;user-select:none;-webkit-tap-highlight-color:transparent}
+.sq{min-width:0;min-height:0;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;font-size:min(11vw,56px);line-height:1}
+.l{background:var(--l)}.d{background:var(--d)}.sel{box-shadow:inset 0 0 0 100px #ffd54f99}i{position:absolute;font-style:normal;font-weight:700;font-size:min(3vw,13px);line-height:1;pointer-events:none;z-index:2}i.rk{top:3px;left:3px}i.fl{bottom:3px;right:3px}.l i{color:var(--d)}.d i{color:var(--l)}.lm{box-shadow:inset 0 0 0 100px #ffe06655}
+b{font-weight:400;display:block;line-height:1;font-family:'Segoe UI Symbol','Noto Sans Symbols 2','DejaVu Sans',sans-serif}b.pw{color:#fff;text-shadow:0 0 2px #000,0 0 2px #000,0 0 3px #000}b.pb{color:#0a0a0a;text-shadow:0 0 1px #fff,0 0 1px #fff,0 0 2px #fff,0 0 4px #d8d8d8}
+u{position:absolute;width:28%;height:28%;border-radius:50%;background:rgba(0,0,0,.28)}u.x{width:90%;height:90%;background:none;border:4px solid #c0392b}
+#msg{min-height:26px;font-weight:600;color:var(--a);margin:8px 2px}
+.card{background:var(--c);border-radius:12px;padding:10px 12px;margin:8px 0}.s{color:var(--m);font-size:13px}
+.row{display:flex;gap:8px;margin:8px 0}
+.b{flex:1;border:0;border-radius:10px;padding:11px;font-size:14px;background:var(--a);color:#fff;cursor:pointer}.b.g{background:var(--c);color:var(--t);border:1px solid var(--m)}
+input,textarea{width:100%;margin:4px 0;padding:8px;border-radius:8px;border:1px solid var(--m);background:var(--bg);color:var(--t);font:inherit}
+.chip{display:inline-block;margin:2px;padding:2px 7px;border-radius:10px;background:var(--bg);font-size:13px;cursor:pointer}
+.chip.bad{background:#e67e22;color:#fff}.chip.bl{background:#c0392b;color:#fff}.chip.ok{background:#f1c40f;color:#000}
+.gr{width:100%;height:80px;background:var(--bg);border-radius:8px;color:var(--a)}
+</style></head><body><div class="w">
+<h1>♞ Shaxmat Pro</h1><div class="tabs" id="tabs"></div>
+<div id="bd"></div><div id="msg"></div><div id="pn"></div></div>
+<script>
+const $=i=>document.getElementById(i),F='abcdefgh',S={k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟︎'};
+let g=new Chess(),mode='an',sel=null,tgt=[],last=[],uc=null,onUser=null,flip=false,lock=false,
+sfUrl='https://cdn.jsdelivr.net/npm/stockfish.js@10.0.2/stockfish.js',localSF=null,sf=null,q=Promise.resolve(),
+LP=[],ps=[],R={},solved=(()=>{try{return +localStorage.getItem('shx2')||0}catch(e){return 0}})(),opM=[],opN=0;
+/* ---------- MA'LUMOTLAR ---------- */
+const PZ=[
+{fen:'6k1/5ppp/8/8/8/8/8/R3K3 w - - 0 1',moves:['a1a8']},
+{fen:'6rk/6pp/8/6N1/8/8/8/6K1 w - - 0 1',moves:['g5f7']},
+{fen:'rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2',moves:['d8h4']},
+{fen:'r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4',moves:['h5f7']},
+{fen:'r3k3/8/8/1N6/8/8/8/4K3 w - - 0 1',moves:['b5c7']}];
+const E=[
+['Farzin bilan mat','8/8/8/4k3/8/8/8/3QK3 w - - 0 1','Yolgʻiz shohga mat qoʻying. Pat boʻlmasin!'],
+['Rux bilan mat','8/8/8/4k3/8/8/8/R3K3 w - - 0 1','Shohni chetga siqib, rux bilan mat qoʻying.'],
+['Lucena pozitsiyasi','1K1k4/1P6/8/8/8/8/r7/2R5 w - - 0 1','“Koʻprik” qurib, piyodani farzinga aylantiring.'],
+['Filidor himoyasi','3k4/8/r7/3PK3/8/8/8/4R3 w - - 0 1','Qora ruxi 6-qatorda: bu durang himoyasi. Yutib koʻring.'],
+['Piyoda: kalit katak','4k3/8/4K3/4P3/8/8/8/8 w - - 0 1','Shoh piyoda oldida turibdi — oppozitsiya bilan yuting.']];
+const O=[
+['Italyan o‘yini','e4 e5 Nf3 Nc6 Bc4 Bc5 c3 Nf6 d3 d6 O-O O-O','Oq: markazni egallash, d4 tayyorlash. Yangi boshlovchilar uchun yaxshi.'],
+['Ispan (Ruy Lopez)','e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 b5 Bb3 d6 c3 O-O','Oq: klassik, chuqur strategik bosim. Eng koʻp oʻynaladigan ochilish.'],
+['Sitsiliya, Najdorf','e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 a6 Be3 e5 Nb3 Be6','Qora: yutuq uchun oʻynaydigan keskin himoya.'],
+['Fransuz himoyasi','e4 e6 d4 d5 Nc3 Nf6 Bg5 Be7 e5 Nfd7 Bxe7 Qxe7','Qora: mustahkam, piyoda zanjiri; oq fili “yomon” boʻladi.'],
+['Karo-Kann','e4 c6 d4 d5 Nc3 dxe4 Nxe4 Bf5 Ng3 Bg6 h4 h6 Nf3 Nd7','Qora: ishonchli va qulay oʻrta oʻyin.'],
+['Qirolicha gambiti rad etilgan','d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 e3 O-O Nf3 h6 Bh4 b6','Oq/qora: pozitsion oʻyin uchun asos.'],
+['London tizimi','d4 d5 Nf3 Nf6 Bf4 e6 e3 c5 c3 Nc6 Nbd2 Bd6 Bg3 O-O','Oq: kam nazariya, har doim bir xil sxema.'],
+['Hind himoyasi (KID)','d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 O-O Nc6','Qora: markazni oʻzingga berib, keyin hujumga oʻtish.'],
+['Ingliz ochilishi','c4 e5 Nc3 Nf6 Nf3 Nc6 g3 d5 cxd5 Nxd5 Bg2 Nb6','Oq: moslashuvchan, qanot strategiyasi.']];
+/* ---------- TAXTA ---------- */
+function draw(){let h='';for(let i=0;i<64;i++){const r=flip?7-(i>>3):i>>3,c=flip?7-(i&7):i&7,s=F[c]+(8-r),p=g.get(s);
+h+=`<div class="sq ${(r+c)%2?'d':'l'}${s==sel?' sel':''}${last.includes(s)?' lm':''}" onclick="tap('${s}')">${(i&7)==0?`<i class="rk">${8-r}</i>`:''}${(i>>3)==7?`<i class="fl">${F[c]}</i>`:''}${p?`<b class="p${p.color}">${S[p.type]}</b>`:''}${tgt.includes(s)?`<u class="${p?'x':''}"></u>`:''}</div>`}
+$('bd').innerHTML=h}
+function say(t){$('msg').textContent=t}
+function tap(s){if(lock||uc==='-')return;if(sel&&tgt.includes(s)){if(g.moves({square:sel,verbose:true}).some(m=>m.to==s&&m.promotion)){askPr(sel,s);return}go(sel,s,'q');return}
+const p=g.get(s);if(p&&p.color==g.turn()&&(uc==null||uc==p.color)){sel=s;tgt=g.moves({square:s,verbose:true}).map(m=>m.to)}else{sel=null;tgt=[]}draw()}
+function go(f,t,pr){const m=g.move({from:f,to:t,promotion:pr});last=[f,t];sel=null;tgt=[];draw();if(onUser)onUser(m)}
+function askPr(f,t){const c=g.turn();lock=true;const d=document.createElement('div');d.id='pr';d.innerHTML='<div class="card"><b>Qaysi sipohga aylansin?</b><div class="row">'+['q','r','b','n'].map(x=>`<button class="b g" onclick="pick('${f}','${t}','${x}')"><b class="p${c}" style="font-size:34px">${S[x]}</b></button>`).join('')+'</div></div>';$('bd').after(d)}
+function pick(f,t,x){$('pr').remove();lock=false;go(f,t,x)}
+function pm(u){const m=g.move({from:u.slice(0,2),to:u.slice(2,4),promotion:u[4]});last=[u.slice(0,2),u.slice(2,4)];return m}
+/* ---------- STOCKFISH ---------- */
+async function boot(){if(sf)return true;try{const t=localSF?await localSF.text():await (await fetch(sfUrl)).text();
+sf=new Worker(URL.createObjectURL(new Blob([t],{type:'text/javascript'})));sf.postMessage('uci');return true}
+catch(e){say('Stockfish yuklanmadi. "Tahlil" boʻlimida engine manzilini yoki stockfish.js faylini koʻrsating.');return false}}
+function ask(fen,depth,skill){return q=q.then(()=>new Promise(async res=>{if(!await boot())return res(null);
+const wt=fen.split(' ')[1]=='w'?1:-1;let o={cp:0,mate:null,pv:'',best:''};
+sf.onmessage=e=>{const l=String(e.data);
+if(l.startsWith('info')&&/ score /.test(l)){const m=l.match(/score (cp|mate) (-?\d+)/);if(m){if(m[1]=='cp'){o.cp=+m[2];o.mate=null}else{o.mate=+m[2];o.cp=(o.mate>0?1:-1)*(10000-Math.abs(o.mate)*10)}}const p=l.match(/ pv (.*)/);if(p)o.pv=p[1]}
+else if(l.startsWith('bestmove')){o.best=l.split(' ')[1];if(!o.pv)o.pv=o.best;o.w=o.cp*wt;o.wm=o.mate==null?null:o.mate*wt;res(o)}};
+sf.postMessage('setoption name Skill Level value '+(skill??20));sf.postMessage('position fen '+fen);sf.postMessage('go depth '+depth)}))}
+const fmt=o=>o.wm!=null?'#'+o.wm:(o.w>0?'+':'')+(o.w/100).toFixed(2);
+function line(fen,pv,n){const t=new Chess(fen);return pv.split(' ').slice(0,n).map(u=>{const m=t.move({from:u.slice(0,2),to:u.slice(2,4),promotion:u[4]});return m?m.san:''}).join(' ')}
+/* ---------- REJIMLAR ---------- */
+const M=[['kr','Kurs'],['an','Tahlil'],['tk','Taktika'],['eg','Endshpil'],['op','Ochilish']];
+function tabs(){$('tabs').innerHTML=M.map(m=>`<button class="tab${m[0]==mode?' on':''}" onclick="setMode('${m[0]}')">${m[1]}</button>`).join('')}
+function setMode(m){mode=m;g=new Chess();sel=null;tgt=[];last=[];uc=null;onUser=null;flip=false;lock=false;if($('pr'))$('pr').remove();say('');tabs();draw();P[m]()}
+const P={
+kr(){let h='';LV.forEach((v,l)=>{h+=`<div class="lv">${v}</div><div class="tabs wrap">`+C.map((c,i)=>c[0]==l?`<button class="tab${cd[i]?' dn':''}" data-k="${i}" onclick="krL(${i})">${i+1}. ${c[1]}</button>`:'').join('')+'</div>'});
+$('pn').innerHTML=`<div class="card" id="kt"></div><div class="row"><button class="b g" onclick="krL(Math.max(0,cur-1))">◀ Oldingi</button><button class="b" onclick="krL(Math.min(C.length-1,cur+1))">Keyingi ▶</button></div><div class="s" id="kp"></div>`+h;krL(cur)},
+an(){$('pn').innerHTML=`<div class="card"><b>Stockfish engine</b><p class="s">Internet bilan avtomatik yuklanadi. Oflayn ishlatish uchun stockfish.js faylini tanlang:</p>
+<input value="${sfUrl}" onchange="sfUrl=this.value;sf=null"><input type="file" onchange="localSF=this.files[0];sf=null"></div>
+<div class="row"><button class="b" onclick="evalNow()">Pozitsiyani tahlil qil</button><button class="b g" onclick="g.undo();last=[];draw()">↶</button><button class="b g" onclick="flip=!flip;draw()">⇅</button></div>
+<div class="card" id="out">Donalarni surib oʻynang, soʻng tahlil tugmasini bosing.</div>
+<div class="card"><b>Partiya tahlili (PGN)</b><textarea id="pgn" rows="4" placeholder="PGN ni shu yerga qoʻying"></textarea><button class="b" style="width:100%" onclick="pgnAn()">Partiyani tahlil qil</button><div id="rep"></div></div>
+<div class="card"><b>FEN</b><input id="fen" placeholder="FEN joylash"><button class="b g" style="width:100%" onclick="g=new Chess($('fen').value);last=[];draw()">Yuklash</button></div>`},
+tk(){$('pn').innerHTML=`<div class="card"><b>Taktika</b> <span id="ps" class="s"></span><div class="row"><button class="b" onclick="nextP()">Keyingi masala</button><button class="b g" onclick="hintP()">Maslahat</button></div></div>
+<div class="card"><b>Minglab masala qoʻshish</b><p class="s">database.lichess.org/#puzzles dan <i>lichess_db_puzzle.csv</i> ni (bepul) yuklab oling va tanlang. Reyting oraligʻi:</p>
+<div class="row"><input id="rmin" type="number" value="1200"><input id="rmax" type="number" value="1800"></div><input type="file" accept=".csv" onchange="impP(this.files[0])"><div id="im" class="s">Hozir ichki masalalar: ${PZ.length} ta</div></div>`;nextP()},
+eg(){$('pn').innerHTML=E.map((e,i)=>`<button class="tab" onclick="egL(${i})">${e[0]}</button>`).join('')+`<div class="card" id="ed">Mashqni tanlang. Siz oq bilan oʻynaysiz, Stockfish qora.</div><div class="row"><button class="b g" onclick="egHint()">Maslahat</button><button class="b g" onclick="g.undo();g.undo();last=[];draw()">↶ Orqaga</button></div>`},
+op(){$('pn').innerHTML=O.map((o,i)=>`<button class="tab" onclick="opSet(${i})">${o[0]}</button>`).join('')+`<div class="card" id="od">Ochilishni tanlang.</div><div class="row"><button class="b g" onclick="opStep(-1)">◀</button><button class="b" onclick="opStep(1)">▶</button></div>`}};
+$('pn')&&0;
+/* ---------- TAHLIL ---------- */
+async function evalNow(){if(g.game_over()){$('out').textContent='Oʻyin tugagan.';return}$('out').textContent='Hisoblanmoqda…';const o=await ask(g.fen(),16);if(!o)return;
+$('out').innerHTML=`Baho: <b>${fmt(o)}</b> <span class="s">(oq nuqtai nazaridan)</span><br>Eng yaxshi yurish: <b>${line(g.fen(),o.pv,1)}</b><br><span class="s">Variant: ${line(g.fen(),o.pv,6)}</span>`}
+async function pgnAn(){const c=new Chess();if(!c.load_pgn($('pgn').value)){$('rep').textContent='PGN oʻqilmadi.';return}
+const sans=c.history(),t=new Chess(),sc=[],bt=[],cl=v=>Math.max(-800,Math.min(800,v));
+for(let i=0;i<=sans.length;i++){$('rep').textContent='Tahlil: '+i+'/'+sans.length;const o=await ask(t.fen(),10);if(!o)return;sc.push(cl(o.w));bt.push(i<sans.length?line(t.fen(),o.best,1):'');if(i<sans.length)t.move(sans[i])}
+const lab=sans.map((_,i)=>{const l=i%2?sc[i+1]-sc[i]:sc[i]-sc[i+1];return l>300?'??':l>150?'?':l>70?'?!':''});R={sans,lab,bt};
+const pts=sc.map((v,i)=>i+','+(10-v/100)).join(' ');
+$('rep').innerHTML=`<svg class="gr" viewBox="0 0 ${sans.length} 20" preserveAspectRatio="none"><line x1="0" x2="${sans.length}" y1="10" y2="10" stroke="gray" stroke-width=".1"/><polyline fill="none" stroke="currentColor" stroke-width=".25" points="${pts}"/></svg><p class="s">Grafik: yuqori — oqqa ustunlik. Xato yurishni bosing.</p>`+
+sans.map((s,i)=>`<span class="chip ${lab[i]=='??'?'bl':lab[i]=='?'?'bad':lab[i]?'ok':''}" onclick="goPly(${i+1})">${i%2?'':(i/2+1)+'. '}${s}${lab[i]}</span>`).join('')}
+function goPly(k){g=new Chess();for(let j=0;j<k;j++)g.move(R.sans[j]);const h=g.history({verbose:true});const m=h[h.length-1];last=[m.from,m.to];draw();say(R.lab[k-1]?'Yaxshiroq yurish: '+R.bt[k-1]:'')}
+/* ---------- TAKTIKA ---------- */
+function nextP(){let pool=LP.length?LP.filter(p=>p.r>=+$('rmin').value&&p.r<=+$('rmax').value):PZ;if(LP.length&&!pool.length){pool=PZ;$('im').textContent='Bu reyting oraligʻida masala yoʻq, ichki masala koʻrsatildi. Oraliqni kengaytiring.'}const vc=new Chess();for(let k=0;k<40;k++){const p=pool[Math.floor(Math.random()*pool.length)];if(vc.validate_fen(p.fen).valid){loadP(p);window.scrollTo(0,0);return}}say('Masala yuklanmadi')}
+function loadP(p){g=new Chess(p.fen);ps=p.moves.slice();last=[];sel=null;tgt=[];if(p.pre)pm(ps.shift());uc=g.turn();flip=uc=='b';onUser=chk;draw();
+$('ps').textContent='Yechilgan: '+solved+(p.r?' · reyting '+p.r:'');say((uc=='w'?'Oq':'Qora')+' yuradi — eng yaxshi yurishni toping')}
+function chk(m){const u=m.from+m.to+(m.promotion||'');
+if(u==ps[0]||g.in_checkmate()){ps.shift();if(g.in_checkmate())ps=[];
+if(!ps.length){say('✅ Toʻgʻri! Masala yechildi.');uc='-';solved++;try{localStorage.setItem('shx2',solved)}catch(e){}$('ps').textContent='Yechilgan: '+solved}
+else{lock=true;say('Toʻgʻri! Davom eting…');setTimeout(()=>{pm(ps.shift());lock=false;draw()},450)}}
+else{say('✗ Xato, boshqa yurishni sinang');g.undo();last=[];draw()}}
+function hintP(){if(ps[0]){sel=ps[0].slice(0,2);tgt=[];draw();say('Maslahat: shu dona bilan yuring')}}
+async function impP(f){if(!f)return;$('im').textContent='Oʻqilmoqda…';const L=(await f.slice(0,30e6).text()).split(/\r?\n/);L.pop();LP=[];
+for(const l of L){const a=l.split(',');if(a.length>3&&a[1]&&a[1].includes('/')&&a[2])LP.push({fen:a[1],moves:a[2].trim().split(' '),pre:1,r:+a[3]})}
+if(!LP.length){$('im').textContent='Masala topilmadi. Fayl .csv (zst emas) ekanini tekshiring.';return}const n=LP.filter(p=>p.r>=+$('rmin').value&&p.r<=+$('rmax').value).length;$('im').textContent=LP.length+' ta masala yuklandi, reyting oraligʻiga mos: '+n;nextP()}
+/* ---------- ENDSHPIL ---------- */
+function egL(i){g=new Chess(E[i][1]);uc='w';last=[];sel=null;tgt=[];lock=false;$('ed').innerHTML='<b>'+E[i][0]+'</b><br>'+E[i][2];say('Sizning yurishingiz');
+onUser=async()=>{if(g.game_over())return over();lock=true;say('Stockfish oʻylayapti…');const o=await ask(g.fen(),10,20);lock=false;if(!o)return;pm(o.best);draw();g.game_over()?over():say('Sizning yurishingiz')}}
+function over(){say(g.in_checkmate()?(g.turn()==uc?'Mat yedingiz.':'🎉 Mat qoʻydingiz!'):'Durang.')}
+async function egHint(){if(g.game_over())return;say('Hisoblanmoqda…');const o=await ask(g.fen(),14);if(o)say('Maslahat: '+line(g.fen(),o.best,1))}
+/* ---------- OCHILISH ---------- */
+function opSet(i){g=new Chess();opM=O[i][1].split(' ');opN=0;last=[];draw();$('od').innerHTML='<b>'+O[i][0]+'</b><br>'+O[i][2]+'<br><span class="s">'+O[i][1]+'</span>';say('Yurish 0/'+opM.length)}
+function opStep(d){if(!opM.length)return;if(d>0&&opN<opM.length)g.move(opM[opN++]);else if(d<0&&opN>0){g.undo();opN--}last=[];draw();say('Yurish '+opN+'/'+opM.length)}
+const LV=['1-bosqich: Boshlangʻich (0–800)','2-bosqich: Oʻrta (800–1600)','3-bosqich: Yuqori (1600+)'];
+const C=[
+[0,'Donalar yurishi','Donani bosing — yurishlari koʻrinadi (ikkala tomon uchun). Rux: toʻgʻri. Fil: diagonal. Farzin: ikkalasi. Ot: «G» shaklida, sakraydi. Shoh: 1 katak. Piyoda: oldinga, diagonal uradi. Qiymat: piyoda 1, ot 3, fil 3, rux 5, farzin 9. Oq birinchi yuradi.',null,null],
+[0,'Markazni egalla','Birinchi qoida: markaz (e4, d4, e5, d5) uchun kurash. Piyodani e2–e4 yuring: bu fil va farzinga yoʻl ochadi.',null,['e2e4']],
+[0,'Shoh va mat','Shohga hujum — «shoh». Qochib boʻlmasa — «mat», oʻyin tugaydi. Himoya 3 xil: shoh qochadi, hujumchini urasiz, orani yopasiz. Topshiriq: qora shoh oʻz piyodalari orqasida qolgan — ruxni a8 ga qoʻying.','6k1/5ppp/8/8/8/8/8/R3K3 w - - 0 1',['a1a8']],
+[0,'Ikki rux bilan mat','Ikki rux «zina» bilan shohni chetga suradi: biri qatorni yopadi, ikkinchisi mat qoʻyadi. Topshiriq: Rb8 mat!','6k1/R7/8/8/8/8/8/1R2K3 w - - 0 1',['b1b8']],
+[0,'Piyoda — farzin','Piyoda oxirgi qatorga yetsa, istalgan dona (odatda farzin) boʻladi. Endshpilda bu hal qiluvchi. Topshiriq: e7–e8.','8/4P3/8/8/8/8/k7/4K3 w - - 0 1',['e7e8q']],
+[0,'Bepul dona olish','Har yurishdan oldin soʻrang: raqibning himoyasiz donasi bormi? Himoyasiz dona — sovgʻa. Topshiriq: farzinni oling.','4k3/8/8/3q4/8/8/8/3RK3 w - - 0 1',['d1d5']],
+[0,'Rokirovka','Shoh xavfsizligi va rux faolligi uchun: shoh 2 katak ruxga tomon yuradi. Sharti: shoh va rux yurmagan, oraliq boʻsh, shoh hujum ostida emas. Topshiriq: qisqa rokirovka (shoh g1 ga).','r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1',['e1g1']],
+[1,'Vilka','Bir dona bir vaqtda ikki nishonga hujum qiladi. Ot vilkasi eng xavfli. Topshiriq: Nc7+ — shoh va ruxga hujum.','r3k3/8/8/1N6/8/8/8/4K3 w - - 0 1',['b5c7']],
+[1,'Bogʻlash','Bogʻlangan dona yura olmaydi (orqasida muhimroq dona turibdi). Topshiriq: filni b5 ga qoʻying — ot shohga bogʻlanadi.','4k3/8/2n5/8/8/8/8/4KB2 w - - 0 1',['f1b5']],
+[1,'Choʻkkan mat','Shoh oʻz donalari bilan oʻralib qolgan — faqat ot mat qoʻya oladi. Topshiriq: Nf7#.','6rk/6pp/8/6N1/8/8/8/6K1 w - - 0 1',['g5f7']],
+[1,'Farzin va fil hujumi','Farzin va fil f7 (qora uchun eng zaif katak) ga qaratilsa, tez mat boʻlishi mumkin. Topshiriq: Qxf7#.','r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4',['h5f7']],
+[1,'Oʻz shohingni ochma','Ochilishda keraksiz piyoda yurishlari (f3, g4) shohni ochadi. Qora uchun eng tez mat: Qh4#.','rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2',['d8h4']],
+[1,'Ochilish tamoyillari','1) Markazni egallang (e4/d4). 2) Ot va filni rivojlantiring. 3) Rokirovka qiling. 4) Bir donani ikki marta yurmang. 5) Erta farzin chiqarmang. «Ochilish» boʻlimida 9 ta repertuarni koʻring.',null,null],
+[1,'Taktika mavzulari','Vilka, bogʻlash, skewer (shoh orqasidagi dona), ochilgan hujum, ikkilangan hujum, himoyachini yoʻqotish, orqa qator, choʻkkan mat. Odat: kuniga 20 ta masala. «Taktika» boʻlimiga Lichess bazasini yuklang (1200–1800 reyting).',null,null],
+[2,'Endshpil asoslari','Kvadrat qoidasi, oppozitsiya, kalit kataklar, Lucena (koʻprik) va Filidor himoyasi. Rux endshpili: ruxni faol tuting. «Endshpil» boʻlimida Stockfish ga qarshi mashq qiling.',null,null],
+[2,'Pozitsion oʻyin','Ochiq ustunlarni rux bilan egallash, raqib zaif kataklariga ot qoʻyish (outpost), fillar jufti ustunligi, piyoda tuzilishi (ortiqcha, ikkilangan, izolyatsiyalangan piyoda), tempo va fazo. Reja: qaysi qanotda ustunlik bor — oʻsha yerda oʻynang.',null,null],
+[2,'Hisoblash','Har yurishda nomzod yurishlarni toping (shoh, urish, tahdid). Har variantni oxirigacha hisoblang va raqibning eng yaxshi javobini oʻylang. Yurishdan oldin: raqib nima tahdid qilyapti? Biror dona himoyasiz qolyaptimi?',null,null],
+[2,'Partiya tahlili','Har partiyadan keyin PGN ni «Tahlil» boʻlimiga qoʻying. Stockfish belgilagan xatolarni (?!, ?, ??) oʻrganing va oʻzingizdan «nima uchun?» deb soʻrang. Xato turlarini yozib boring: taktik (koʻrmadim), pozitsion (reja yoʻq), vaqt.',null,null],
+[2,'Professional yoʻl xaritasi','Taxminiy: 0–3 oy: qoidalar va asosiy taktika (~800). 3–9 oy: kuniga 20 masala, ochilish repertuari, asosiy endshpil (~1400). 9–24 oy: pozitsion oʻyin, har partiya tahlili, uzun partiyalar (~1800+). Keyin: murabbiy, turnir tajribasi, chuqur ochilish tayyorgarligi. Ustalik darajasi (2200+) koʻp yillik mehnat talab qiladi — bu kurs mustahkam asos beradi.',null,null]];
+let cd={},cur=0;try{cd=JSON.parse(localStorage.getItem('shx3')||'{}')}catch(e){}
+function kpU(){$('kp').textContent='Bajarilgan darslar: '+Object.keys(cd).length+'/'+C.length}
+function krL(i){cur=i;const c=C[i];g=c[3]?new Chess(c[3]):new Chess();ps=c[4]?c[4].slice():[];uc=c[4]?g.turn():null;flip=uc=='b';sel=null;tgt=[];last=[];lock=false;onUser=c[4]?krChk:null;
+if(!c[4]){cd[i]=1;try{localStorage.setItem('shx3',JSON.stringify(cd))}catch(e){}}
+$('kt').innerHTML='<b>'+(i+1)+'. '+c[1]+'</b><p>'+c[2]+'</p>';say(c[4]?'Topshiriqni bajaring':'Oʻqing va taxtada mashq qiling');
+document.querySelectorAll('[data-k]').forEach(b=>{b.classList.toggle('on',+b.dataset.k==i);if(cd[b.dataset.k])b.classList.add('dn')});kpU();draw()}
+function krChk(m){const u=m.from+m.to+(m.promotion||'');if(u==ps[0]||g.in_checkmate()){cd[cur]=1;try{localStorage.setItem('shx3',JSON.stringify(cd))}catch(e){}uc='-';say('✅ Toʻgʻri! Dars bajarildi. Keyingisiga oʻting.');const b=document.querySelector('[data-k="'+cur+'"]');if(b)b.classList.add('dn');kpU()}else{say('✗ Xato, qayta urining');g.undo();last=[];draw()}}
+setMode('kr');
+</script><script>if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{})</script></body></html>
