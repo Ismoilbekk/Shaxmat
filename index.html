@@ -93,7 +93,7 @@ an(){$('pn').innerHTML=`<div class="card"><b>Stockfish engine</b><p class="s">In
 <div class="card"><b>FEN</b><input id="fen" placeholder="FEN joylash"><button class="b g" style="width:100%" onclick="g=new Chess($('fen').value);last=[];draw()">Yuklash</button></div>`},
 tk(){$('pn').innerHTML=`<div class="card"><b>Taktika</b> <span id="ps" class="s"></span><div class="row"><button class="b" onclick="nextP()">Keyingi masala</button><button class="b g" onclick="hintP()">Maslahat</button></div></div>
 <div class="card"><b>Minglab masala qoʻshish</b><p class="s">database.lichess.org/#puzzles dan <i>lichess_db_puzzle.csv</i> ni (bepul) yuklab oling va tanlang. Reyting oraligʻi:</p>
-<div class="row"><input id="rmin" type="number" value="1200"><input id="rmax" type="number" value="1800"></div><input type="file" accept=".csv" onchange="impP(this.files[0])"><div id="im" class="s">Hozir ichki masalalar: ${PZ.length} ta</div></div>`;nextP()},
+<div class="row"><input id="rmin" type="number" value="1200"><input id="rmax" type="number" value="1800"></div><button class="b" style="width:100%" onclick="izlash()">🔍 Izlash</button><input type="file" accept=".csv" onchange="impP(this.files[0])"><div id="im" class="s">Hozir ichki masalalar: ${PZ.length} ta</div></div>`;nextP()},
 eg(){$('pn').innerHTML=E.map((e,i)=>`<button class="tab" onclick="egL(${i})">${e[0]}</button>`).join('')+`<div class="card" id="ed">Mashqni tanlang. Siz oq bilan oʻynaysiz, Stockfish qora.</div><div class="row"><button class="b g" onclick="egHint()">Maslahat</button><button class="b g" onclick="g.undo();g.undo();last=[];draw()">↶ Orqaga</button></div>`},
 op(){$('pn').innerHTML=O.map((o,i)=>`<button class="tab" onclick="opSet(${i})">${o[0]}</button>`).join('')+`<div class="card" id="od">Ochilishni tanlang.</div><div class="row"><button class="b g" onclick="opStep(-1)">◀</button><button class="b" onclick="opStep(1)">▶</button></div>`}};
 $('pn')&&0;
@@ -122,19 +122,21 @@ function idb(){return new Promise((ok,no)=>{const r=indexedDB.open('shxdb',1);r.
 async function dbOp(m,v){const d=await idb();return new Promise((ok,no)=>{const t=d.transaction('k',m=='get'?'readonly':'readwrite'),o=t.objectStore('k'),r=m=='get'?o.get('pz'):m=='put'?o.put(v,'pz'):o.delete('pz');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
 (async()=>{try{const d=await dbOp('get');if(d&&d.s&&d.s.length){LS=d.s;DBI=d;const im=$('im');if(im)imInfo()}}catch(e){}})();
 function imInfo(){const im=$('im');if(!im)return;im.innerHTML=(LS.length?'Saqlangan masalalar: '+LS.length+' ta (reyting '+DBI.a+'\u2013'+DBI.b+'). Qayta yuklash shart emas.<br><a href="#" onclick="clrP();return false">Saqlanganni o\u02bbchirish</a>':'Hozir ichki masalalar: '+PZ.length+' ta')}
+function izlash(){const a=+$('rmin').value||0,b=+$('rmax').value||4000;let n=0;for(const s of LS){const r=+s.slice(s.lastIndexOf('|')+1);if(r>=a&&r<=b)n++}
+nextP();const im=$('im');if(!LS.length)im.textContent='Masalalar bazasi yuklanmagan — ichki masalalar koʻrsatildi. Pastdan lichess .csv faylini tanlang.';else if(n)im.innerHTML='Reyting '+a+'–'+b+': '+n+' ta masala topildi (saqlangan: '+LS.length+' ta).<br><a href="#" onclick="clrP();return false">Saqlanganni oʻchirish</a>'}
 async function clrP(){try{await dbOp('del')}catch(e){}LS=[];DBI=null;imInfo();nextP()}
 function nextP(){const im=$('im');if(im&&!im.dataset.t){im.dataset.t=1;imInfo()}
-const a=+$('rmin').value,b=+$('rmax').value,vc=new Chess();let p=null;
-if(LS.length){for(let k=0;k<600&&!p;k++){const f=LS[Math.floor(Math.random()*LS.length)].split('|'),r=+f[2];if(r>=a&&r<=b&&vc.validate_fen(f[0]).valid)p={fen:f[0],moves:f[1].split(' '),pre:1,r:r}}
-if(!p&&im)im.textContent='Bu reyting oraligʻida saqlangan masala topilmadi. Oraliqni oʻzgartiring yoki qayta yuklang.'}
+const a=+$('rmin').value||0,b=+$('rmax').value||4000,vc=new Chess();let p=null;
+if(LS.length){const n=LS.length,st=Math.floor(Math.random()*n);for(let k=0;k<n;k++){const s=LS[(st+k)%n],r=+s.slice(s.lastIndexOf('|')+1);if(r>=a&&r<=b){const f=s.split('|');if(vc.validate_fen(f[0]).valid){p={fen:f[0],moves:f[1].split(' '),pre:1,r:r};break}}}
+if(!p&&im)im.textContent='Saqlangan masalalar ichida '+a+'\u2013'+b+' reytingli masala yo\u02bbq (saqlangan oraliq: '+(DBI?DBI.a+'\u2013'+DBI.b:'?')+'). Oraliqni o\u02bbzgartiring yoki faylni qayta tanlang.'}
 if(!p)p=PZ[Math.floor(Math.random()*PZ.length)];
 loadP(p);window.scrollTo(0,0)}
-async function impP(f){if(!f)return;const im=$('im'),a=+$('rmin').value,b=+$('rmax').value,out=[],CAP=300000;let pos=0,rest='';
+async function impP(f){if(!f)return;const im=$('im'),out=[],CAP=300000;let pos=0,rest='',lo=9999,hi=0;
 try{while(pos<f.size&&out.length<CAP){const t=rest+await f.slice(pos,pos+8e6).text();pos+=8e6;const L=t.split(/\r?\n/);rest=pos<f.size?L.pop():'';
-for(const l of L){const c=l.split(',');if(c.length>3&&c[1]&&c[1].includes('/')&&c[2]){const r=+c[3];if(r>=a&&r<=b)out.push(c[1]+'|'+c[2].trim()+'|'+r)}}
+for(const l of L){const c=l.split(',');if(c.length>3&&c[1]&&c[1].includes('/')&&c[2]){const r=+c[3];if(r>0){out.push(c[1]+'|'+c[2].trim()+'|'+r);if(r<lo)lo=r;if(r>hi)hi=r}}}
 im.textContent='O\u02bbqilmoqda: '+Math.min(100,Math.round(pos/f.size*100))+'% \u00b7 topildi: '+out.length;await new Promise(r=>setTimeout(r))}
-if(!out.length){im.textContent='Masala topilmadi. Fayl .csv (zst emas) va reyting oralig\u02bbi to\u02bbg\u02bbri ekanini tekshiring.';return}
-LS=out;DBI={s:out,a:a,b:b};await dbOp('put',DBI);imInfo();nextP()}catch(e){im.textContent='Xato: '+e.message}}
+if(!out.length){im.textContent='Masala topilmadi. Fayl .csv (zst emas, papka emas) ekanini tekshiring.';return}
+LS=out;DBI={s:out,a:lo,b:hi};await dbOp('put',DBI);imInfo();nextP()}catch(e){im.textContent='Xato: '+e.message}}
 /* ---------- ENDSHPIL ---------- */
 function egL(i){g=new Chess(E[i][1]);uc='w';last=[];sel=null;tgt=[];lock=false;$('ed').innerHTML='<b>'+E[i][0]+'</b><br>'+E[i][2];say('Sizning yurishingiz');
 onUser=async()=>{if(g.game_over())return over();lock=true;say('Stockfish oʻylayapti…');const o=await ask(g.fen(),10,20);lock=false;if(!o)return;pm(o.best);draw();g.game_over()?over():say('Sizning yurishingiz')}}
